@@ -8,11 +8,11 @@ const getContains = (items: string[], needle: string): string[] => {
   const pattern = new RegExp(`\\/?${needle}`);
 
   return flow([
-    (arr: string[]): string[] => arr.map((val) => {
+    (arr: Array<string>): Array<string> => arr.map((val) => {
       if (pattern.test(val)) {
         return val;
       }
-      return null;
+      return '';
     }),
     (arr: string[]): string[] => arr.filter((e) => e),
   ])(items);
@@ -22,7 +22,16 @@ export default defineNuxtPlugin({
   name: "initActions:vuex",
   setup(nuxt) {
     const store: StoreExtended = useStore();
-    const actions: string[] = Object.keys(store._actions);
+    if (store === undefined) {
+      console.error(new Error('The store is not defined in the application'));
+      return;
+    }
+    if (!(store._actions instanceof Object)) {
+      console.error(new Error('Store not includes actions'));
+      return;
+    }
+    const actions: Array<string> = Object.keys(store._actions);
+
 
     nuxt.hook('app:rendered', async () => {
       const handleServerInit = async () => {
@@ -48,25 +57,12 @@ export default defineNuxtPlugin({
     nuxt.hook("app:mounted", async () => {
       const handleClientInit = async () => {
         const clientInitActions = flow([
-          (arr: string[]) => getContains(arr, 'nuxtServerInit'),
-          (arr: string[]) => arr.map((e) => store.dispatch(e)),
-        ])(actions);
-        const clientInitActions = flow([
-          (arr: string[]) => arr.map((val) => {
-            if (/\/?nuxtClientInit/.test(val)) {
-              return val;
-            }
-            return null;
-          }),
-
-          (arr: string[]) => arr.filter((e) => e),
+          (arr: string[]) => getContains(arr, 'nuxtClientInit'),
           (arr: string[]) => arr.map((e) => store.dispatch(e)),
         ])(actions);
 
         try {
           if (nuxt.payload && nuxt.payload.vuex) {
-            console.log(nuxt.payload.vuex);
-
             store.replaceState(nuxt.payload.vuex);
           }
 
